@@ -38,7 +38,7 @@ function getDistrictRange(body) {
 }
 
 function getBillLabelRange(body) {
-  return `${body}!E${billLabelRow}:${billLabelRow}`;
+  return `${body}!C${billLabelRow}:${billLabelRow}`;
 }
 
 function getBillStatusRange(billLabelRange) {
