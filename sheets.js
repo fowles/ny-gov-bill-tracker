@@ -1,9 +1,9 @@
-function myFunction() {
-  update("Senate");
-  update("Assembly");
+function updateAllSheets() {
+  updateSheet("Senate");
+  updateSheet("Assembly");
 }
 
-function update(body) {
+function updateSheet(body) {
   const liarDistricts = getColumnContent(`${body}!A4:A`);
   const districtToLiar = getDistrictToLiarShortName(body.toLowerCase());
   const liarShortNames = liarDistricts.map(district => districtToLiar[district]);
