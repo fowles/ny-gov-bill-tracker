@@ -70,9 +70,7 @@ function getDistrictToLiarShortName(body) {
 }
 
 function getLatestAmendment(bill) {
-  const amendments = Object.keys(bill.amendments.items);
-  amendments.sort();
-  return bill.amendments.items[amendments[amendments.length - 1]];
+  return bill.amendments.items[bill.activeVersion];
 }
 
 function getCoSponsors(amendment) {
