@@ -8,9 +8,15 @@ function updateSheet(body) {
   const districtToLiar = getDistrictToLiarShortName(body.toLowerCase());
   const liarShortNames = liarDistricts.map(district => districtToLiar[district]);
   const { labels: labels, range: range } = getBillLabels(`${body}!E2:2`);
-  const columns = labels
-    .map(getBill)
-    .map(bill => buildColumn(liarShortNames, bill));
+  const columns = [];
+  const latestLabels = [];
+  for (label of labels) {
+    const bill = getBill(label);
+    const amendment = getLatestAmendment(bill);
+    columns.push(buildColumn(liarShortNames, bill, amendment));
+    latestLabels.push([label.replace(/[a-zA-Z]?$/, amendment.version)]);
+  }
+  setColumnContent(range, latestLabels);
   setColumnContent(range.replace(2, 4).replace(2, ""), columns);
 }
 
@@ -34,8 +40,7 @@ function getLatestAmendment(bill) {
   return bill.amendments.items[amendments[amendments.length - 1]];
 }
 
-function getCoSponsors(bill) {
-  const amendment = getLatestAmendment(bill);
+function getCoSponsors(amendment) {
   return amendment.coSponsors.items.map(item => item.shortName);
 }
 
@@ -56,9 +61,9 @@ function getBillLabels(billLabelRow) {
   };
 }
 
-function buildColumn(liars, bill) {
+function buildColumn(liars, bill, amendment) {
   const sponsor = getSponsor(bill);
-  const coSponsors = getCoSponsors(bill);
+  const coSponsors = getCoSponsors(amendment);
   return liars.map(liar => {
     if (liar === sponsor) return "SPONSOR";
     if (coSponsors.includes(liar)) return "COSPONSOR";
@@ -68,9 +73,8 @@ function buildColumn(liars, bill) {
 
 function setColumnContent(col, vals) {
   const updated = Sheets.Spreadsheets.Values.get(sheetId, col);
-
-  for (let i = 0; i < vals[0].length; ++i) {
-    updated.values[i] = new Array(vals.length);
+  for (let j = 0; j < vals[0].length; ++j) {
+    updated.values[j] = new Array(vals.length);
   }
 
   for (let i = 0; i < vals.length; ++i) {
