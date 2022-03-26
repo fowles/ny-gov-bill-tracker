@@ -1,23 +1,56 @@
+// https://legislation.nysenate.gov/static/docs/html/index.html
+
+const billLabelRow = 2
+const billStatusRow = 3
+const billCommitteeRow = 4
+const billSponsorRowStart = 6
+
 function updateAllSheets() {
   updateSheet("Senate");
   updateSheet("Assembly");
 }
 
 function updateSheet(body) {
-  const liarDistricts = getColumnContent(`${body}!A4:A`);
+  const liarDistricts = getColumnContent(getDistrictRange(body));
   const districtToLiar = getDistrictToLiarShortName(body.toLowerCase());
   const liarShortNames = liarDistricts.map(district => districtToLiar[district]);
-  const { labels: labels, range: range } = getBillLabels(`${body}!E2:2`);
-  const columns = [];
+  const { labels: labels, range: range } = getBillLabels(getBillLabelRange(body));
+  const spsonsorships = [];
+  const statuses = [];
+  const committees = [];
   const latestLabels = [];
   for (label of labels) {
     const bill = getBill(label);
     const amendment = getLatestAmendment(bill);
-    columns.push(buildColumn(liarShortNames, bill, amendment));
+    spsonsorships.push(buildSponsorshipColumn(liarShortNames, bill, amendment));
+    statuses.push([bill.status.statusDesc]);
+    committees.push([bill.status.committeeName]);
     latestLabels.push([label.replace(/[a-zA-Z]?$/, amendment.version)]);
   }
   setColumnContent(range, latestLabels);
-  setColumnContent(range.replace(2, 4).replace(2, ""), columns);
+  setColumnContent(getBillStatusRange(range), statuses);
+  setColumnContent(getBillCommitteeRange(range), committees);
+  setColumnContent(getBillSponsorRange(range), spsonsorships);
+}
+
+function getDistrictRange(body) {
+  return `${body}!A${billSponsorRowStart}:A`;
+}
+
+function getBillLabelRange(body) {
+  return `${body}!E${billLabelRow}:${billLabelRow}`;
+}
+
+function getBillStatusRange(billLabelRange) {
+  return billLabelRange.replaceAll(billLabelRow, billStatusRow)
+}
+
+function getBillCommitteeRange(billLabelRange) {
+  return billLabelRange.replaceAll(billLabelRow, billCommitteeRow)
+}
+
+function getBillSponsorRange(billLabelRange) {
+  return billLabelRange.replace(billLabelRow, billSponsorRowStart).replace(billLabelRow, "")
 }
 
 function getBill(billLabel) {
@@ -30,7 +63,9 @@ function getDistrictToLiarShortName(body) {
   const url = `https://legislation.nysenate.gov/api/3/members/2022/${body}?key=${nyGovApiKey}&limit=1000`;
   const items = JSON.parse(UrlFetchApp.fetch(url).getContentText()).result.items;
   const districtToName = {};
-  for (item of items) { districtToName[item.districtCode] = item.shortName; }
+  for (item of items) {
+    districtToName[item.districtCode] = item.shortName;
+  }
   return districtToName;
 }
 
@@ -61,7 +96,7 @@ function getBillLabels(billLabelRow) {
   };
 }
 
-function buildColumn(liars, bill, amendment) {
+function buildSponsorshipColumn(liars, bill, amendment) {
   const sponsor = getSponsor(bill);
   const coSponsors = getCoSponsors(amendment);
   return liars.map(liar => {
@@ -73,6 +108,7 @@ function buildColumn(liars, bill, amendment) {
 
 function setColumnContent(col, vals) {
   const updated = Sheets.Spreadsheets.Values.get(sheetId, col);
+  updated.values = new Array(vals[0].length);
   for (let j = 0; j < vals[0].length; ++j) {
     updated.values[j] = new Array(vals.length);
   }
