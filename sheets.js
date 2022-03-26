@@ -1,10 +1,25 @@
 function myFunction() {
-  const liars = getColumnContent("B3:B");
-  const {labels: labels, range: range} = getBillLabels();
+  const liars = getColumnContent("Senate!B3:B").map(normalizeName);
+  const { labels: labels, range: range } = getBillLabels("Senate!E2:2");
   const columns = labels
-      .map(getBill)
-      .map(bill => buildColumn(liars, bill));
+    .map(getBill)
+    .map(bill => buildColumn(liars, bill));
   setColumnContent(range.replace(2, 3).replace(2, ""), columns);
+}
+
+function normalizeName(name) {
+  name = name.toLowerCase();
+  name = name.replaceAll(/[àáâãäå]/g, "a");
+  name = name.replaceAll(/æ/g, "ae");
+  name = name.replaceAll(/ç/g, "c");
+  name = name.replaceAll(/[èéêë]/g, "e");
+  name = name.replaceAll(/[ìíîï]/g, "i");
+  name = name.replaceAll(/ñ/g, "n");
+  name = name.replaceAll(/[òóôõö]/g, "o");
+  name = name.replaceAll(/œ/g, "oe");
+  name = name.replaceAll(/[ùúûü]/g, "u");
+  name = name.replaceAll(/[ýÿ]/g, "y");
+  return name;
 }
 
 function getBill(billLabel) {
@@ -21,11 +36,11 @@ function getLatestAmendment(bill) {
 
 function getCoSponsors(bill) {
   const amendment = getLatestAmendment(bill);
-  return amendment.coSponsors.items.map(item => item.fullName);
+  return amendment.coSponsors.items.map(item => normalizeName(item.fullName));
 }
 
 function getSponsor(bill) {
-  return bill.sponsor.member.fullName;
+  return normalizeName(bill.sponsor.member.fullName);
 }
 
 function getColumnContent(col) {
@@ -33,8 +48,8 @@ function getColumnContent(col) {
   return range.values.map(x => x[0]);
 }
 
-function getBillLabels() {
-  const range = Sheets.Spreadsheets.Values.get(sheetId, "E2:2");
+function getBillLabels(billLabelRow) {
+  const range = Sheets.Spreadsheets.Values.get(sheetId, billLabelRow);
   return {
     labels: range.values[0],
     range: range.range,
@@ -45,7 +60,7 @@ function buildColumn(liars, bill) {
   const sponsor = getSponsor(bill);
   const coSponsors = getCoSponsors(bill);
   return liars.map(liar => {
-    if (liar == sponsor) return "SPONSOR";
+    if (liar === sponsor) return "SPONSOR";
     if (coSponsors.includes(liar)) return "COSPONSOR";
     return "";
   });
@@ -53,14 +68,10 @@ function buildColumn(liars, bill) {
 
 function setColumnContent(col, vals) {
   const updated = Sheets.Spreadsheets.Values.get(sheetId, col);
-  console.log(updated.values.length, updated.values[0].length);
-  console.log(vals.length, vals[0].length);
   for (let i = 0; i < vals.length; ++i) {
-    console.log(updated.values[i].length);
     for (let j = 0; j < vals[i].length; ++j) {
       updated.values[j][i] = vals[i][j];
     }
   }
-  // console.log(updated.values);
-  Sheets.Spreadsheets.Values.update(updated, sheetId, updated.range, {valueInputOption: "RAW"});
+  Sheets.Spreadsheets.Values.update(updated, sheetId, updated.range, { valueInputOption: "RAW" });
 }
