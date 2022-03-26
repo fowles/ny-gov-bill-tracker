@@ -1,13 +1,17 @@
 function myFunction() {
-  const liarDistricts = getColumnContent("Senate!A3:A");
-  const districtToLiar = getDistrictToLiarShortName();
+  update("Senate");
+  update("Assembly");
+}
+
+function update(body) {
+  const liarDistricts = getColumnContent(`${body}!A4:A`);
+  const districtToLiar = getDistrictToLiarShortName(body.toLowerCase());
   const liarShortNames = liarDistricts.map(district => districtToLiar[district]);
-  console.log(liarShortNames);
-  const { labels: labels, range: range } = getBillLabels("Senate!E2:2");
+  const { labels: labels, range: range } = getBillLabels(`${body}!E2:2`);
   const columns = labels
     .map(getBill)
     .map(bill => buildColumn(liarShortNames, bill));
-  setColumnContent(range.replace(2, 3).replace(2, ""), columns);
+  setColumnContent(range.replace(2, 4).replace(2, ""), columns);
 }
 
 function getBill(billLabel) {
@@ -16,8 +20,8 @@ function getBill(billLabel) {
   return JSON.parse(response).result;
 }
 
-function getDistrictToLiarShortName() {
-  const url = `https://legislation.nysenate.gov/api/3/members/2022/senate?key=${nyGovApiKey}&limit=1000`;
+function getDistrictToLiarShortName(body) {
+  const url = `https://legislation.nysenate.gov/api/3/members/2022/${body}?key=${nyGovApiKey}&limit=1000`;
   const items = JSON.parse(UrlFetchApp.fetch(url).getContentText()).result.items;
   const districtToName = {};
   for (item of items) { districtToName[item.districtCode] = item.shortName; }
@@ -64,6 +68,11 @@ function buildColumn(liars, bill) {
 
 function setColumnContent(col, vals) {
   const updated = Sheets.Spreadsheets.Values.get(sheetId, col);
+
+  for (let i = 0; i < vals[0].length; ++i) {
+    updated.values[i] = new Array(vals.length);
+  }
+
   for (let i = 0; i < vals.length; ++i) {
     for (let j = 0; j < vals[i].length; ++j) {
       updated.values[j][i] = vals[i][j];
