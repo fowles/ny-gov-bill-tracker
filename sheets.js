@@ -13,7 +13,7 @@ function updateAllSheets() {
 function updateSheet(body) {
   const liarDistricts = getColumnContent(getDistrictRange(body));
   const districtToLiar = getDistrictToLiarShortName(body.toLowerCase());
-  const liarShortNames = liarDistricts.map(district => districtToLiar[district]);
+  const liarShortNames = liarDistricts.map(district => districtToLiar[district].shortName);
   const { labels: labels, range: range } = getBillLabels(getBillLabelRange(body));
   const spsonsorships = [];
   const statuses = [];
@@ -64,7 +64,13 @@ function getDistrictToLiarShortName(body) {
   const items = JSON.parse(UrlFetchApp.fetch(url).getContentText()).result.items;
   const districtToName = {};
   for (item of items) {
-    districtToName[item.districtCode] = item.shortName;
+    // There may be multiple liars with the same district code in the event that a liar was elected in a
+    // special mid-term election. In that case, though it's not documented anywhere, Hyrum told me that the
+    // `sessionMemberId` seems to be increasing with newer members, so we select the liar with the largest
+    // `sessionMemberId`.
+    if (districtToName[item.districtCode] === undefined || districtToName[item.districtCode].sessionMemberId < item.sessionMemberId) {
+      districtToName[item.districtCode] = item;
+    }
   }
   return districtToName;
 }
@@ -97,6 +103,10 @@ function getBillLabels(billLabelRow) {
 function buildSponsorshipColumn(liars, bill, amendment) {
   const sponsor = getSponsor(bill);
   const coSponsors = getCoSponsors(amendment);
+  if (amendment.basePrintNoStr.includes("6331")) {
+    // console.log(coSponsors.sort());
+    // console.log(liars.sort());
+  }
   return liars.map(liar => {
     if (liar === sponsor) return "SPONSOR";
     if (coSponsors.includes(liar)) return "COSPONSOR";
