@@ -103,10 +103,6 @@ function getBillLabels(billLabelRow) {
 function buildSponsorshipColumn(liars, bill, amendment) {
   const sponsor = getSponsor(bill);
   const coSponsors = getCoSponsors(amendment);
-  if (amendment.basePrintNoStr.includes("6331")) {
-    // console.log(coSponsors.sort());
-    // console.log(liars.sort());
-  }
   return liars.map(liar => {
     if (liar === sponsor) return "SPONSOR";
     if (coSponsors.includes(liar)) return "COSPONSOR";
