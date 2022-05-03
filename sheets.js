@@ -20,10 +20,10 @@ function updateSheet(body) {
   const committees = [];
   const latestLabels = [];
   for (label of labels) {
-    const bill = getBill(label);
+    const { bill: bill, substitute: substitute } = getBill(label);
     const amendment = getLatestAmendment(bill);
     spsonsorships.push(buildSponsorshipColumn(liarShortNames, bill, amendment));
-    statuses.push([bill.status.statusDesc]);
+    statuses.push([buildBillStatus(bill, substitute)]);
     committees.push([bill.status.committeeName]);
     latestLabels.push([label.replace(/[a-zA-Z]?$/, amendment.version)]);
   }
@@ -56,7 +56,18 @@ function getBillSponsorRange(billLabelRange) {
 function getBill(billLabel) {
   const url = `https://legislation.nysenate.gov/api/3/bills/2021/${billLabel}?key=${nyGovApiKey}&limit=1000`;
   const response = UrlFetchApp.fetch(url).getContentText();
-  return JSON.parse(response).result;
+  const bill = JSON.parse(response).result;
+  var substitute = null;
+  if (bill.substitutedBy && bill.substitutedBy.basePrintNo != billLabel) {
+    substitute = getBill(bill.substitutedBy.basePrintNo).bill;
+    if (substitute.substitutedBy) {
+      console.log("Bill with nested substitutes?", billLabel, bill.substitutedBy.basePrintNo, substitute.substitutedBy.basePrintNo);
+    }
+  }
+  return {
+    bill: bill,
+    substitute: substitute,
+  };
 }
 
 function getDistrictToLiarShortName(body) {
@@ -108,6 +119,13 @@ function buildSponsorshipColumn(liars, bill, amendment) {
     if (coSponsors.includes(liar)) return "COSPONSOR";
     return "";
   });
+}
+
+function buildBillStatus(bill, substitute) {
+  if (substitute == null) {
+    return bill.status.statusDesc;
+  }
+  return "Sub by " + substitute.printNo + "\n" + substitute.status.statusDesc;
 }
 
 function setColumnContent(col, vals) {
