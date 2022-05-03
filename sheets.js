@@ -120,7 +120,20 @@ function buildSponsorshipColumn(liars, bill) {
 }
 
 function buildBillStatus(bills) {
-  return bills[bills.length - 1].status.statusDesc;
+  const bill = bills[bills.length - 1];
+  const statuses = [];
+  for (milestone of bill.milestones.items) {
+    if (milestone.statusType === "PASSED_SENATE") {
+      statuses.push(milestone.statusDesc);
+    } else if (milestone.statusType === "PASSED_ASSEMBLY") {
+      statuses.push(milestone.statusDesc);
+    }
+  }
+  const lastStatus = bills[bills.length - 1].status.statusDesc;
+  if (statuses.indexOf(lastStatus) == -1) {
+    statuses.push(lastStatus);
+  }
+  return statuses.join("\n");
 }
 
 function buildBillCommitteeName(bills) {
