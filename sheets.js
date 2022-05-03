@@ -20,12 +20,11 @@ function updateSheet(body) {
   const committees = [];
   const latestLabels = [];
   for (label of labels) {
-    const { bill: bill, substitute: substitute } = getBill(label);
-    const amendment = getLatestAmendment(bill);
-    spsonsorships.push(buildSponsorshipColumn(liarShortNames, bill, amendment));
-    statuses.push([buildBillStatus(bill, substitute)]);
-    committees.push([bill.status.committeeName]);
-    latestLabels.push([label.replace(/[a-zA-Z]?$/, amendment.version)]);
+    const bills = getBills(label);
+    spsonsorships.push(buildSponsorshipColumn(liarShortNames, bills[0]));
+    statuses.push([buildBillStatus(bills)]);
+    committees.push([buildBillCommitteeName(bills)]);
+    latestLabels.push([buildLatestLabels(bills)]);
   }
   setColumnContent(range, latestLabels);
   setColumnContent(getBillStatusRange(range), statuses);
@@ -53,21 +52,19 @@ function getBillSponsorRange(billLabelRange) {
   return billLabelRange.replace(billLabelRow, billSponsorRowStart).replace(billLabelRow, "")
 }
 
-function getBill(billLabel) {
-  const url = `https://legislation.nysenate.gov/api/3/bills/2021/${billLabel}?key=${nyGovApiKey}&limit=1000`;
-  const response = UrlFetchApp.fetch(url).getContentText();
-  const bill = JSON.parse(response).result;
-  var substitute = null;
-  if (bill.substitutedBy && bill.substitutedBy.basePrintNo != billLabel) {
-    substitute = getBill(bill.substitutedBy.basePrintNo).bill;
-    if (substitute.substitutedBy) {
-      console.log("Bill with nested substitutes?", billLabel, bill.substitutedBy.basePrintNo, substitute.substitutedBy.basePrintNo);
+function getBills(billLabels) {
+  const bills = [];
+  const labels = billLabels.split("\n")
+  for (billLabel of labels) {
+    const url = `https://legislation.nysenate.gov/api/3/bills/2021/${billLabel}?key=${nyGovApiKey}&limit=1000`;
+    const response = UrlFetchApp.fetch(url).getContentText();
+    const bill = JSON.parse(response).result;
+    if (bill.substitutedBy && labels.indexOf(bill.substitutedBy.basePrintNo) == -1) {
+      labels.push(bill.substitutedBy.basePrintNo);
     }
+    bills.push(bill);
   }
-  return {
-    bill: bill,
-    substitute: substitute,
-  };
+  return bills;
 }
 
 function getDistrictToLiarShortName(body) {
@@ -111,7 +108,8 @@ function getBillLabels(billLabelRow) {
   };
 }
 
-function buildSponsorshipColumn(liars, bill, amendment) {
+function buildSponsorshipColumn(liars, bill) {
+  const amendment = getLatestAmendment(bill);
   const sponsor = getSponsor(bill);
   const coSponsors = getCoSponsors(amendment);
   return liars.map(liar => {
@@ -121,11 +119,16 @@ function buildSponsorshipColumn(liars, bill, amendment) {
   });
 }
 
-function buildBillStatus(bill, substitute) {
-  if (substitute == null) {
-    return bill.status.statusDesc;
-  }
-  return "Sub by " + substitute.printNo + "\n" + substitute.status.statusDesc;
+function buildBillStatus(bills) {
+  return bills[bills.length - 1].status.statusDesc;
+}
+
+function buildBillCommitteeName(bills) {
+  return bills[bills.length - 1].status.committeeName;
+}
+
+function buildLatestLabels(bills) {
+  return bills.map(bill => bill.printNo).join("\n");
 }
 
 function setColumnContent(col, vals) {
