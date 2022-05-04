@@ -3,7 +3,7 @@
 const billLabelRow = 2
 const billStatusRow = 3
 const billCommitteeRow = 4
-const billSponsorRowStart = 6
+const billLiarStatusRowStart = 6
 
 function updateAllSheets() {
   updateSheet("Senate");
@@ -12,16 +12,16 @@ function updateAllSheets() {
 
 function updateSheet(body) {
   const liarDistricts = getColumnContent(getDistrictRange(body));
-  const districtToLiar = getDistrictToLiarShortName(body.toLowerCase());
-  const liarShortNames = liarDistricts.map(district => districtToLiar[district].shortName);
+  const districtToLiar = getDistrictToLiar(body.toLowerCase());
+  const liarIds = liarDistricts.map(district => districtToLiar[district].memberId);
   const { labels: labels, range: range } = getBillLabels(getBillLabelRange(body));
-  const spsonsorships = [];
+  const liarStatus = [];
   const statuses = [];
   const committees = [];
   const latestLabels = [];
   for (label of labels) {
     const bills = getBills(label);
-    spsonsorships.push(buildSponsorshipColumn(liarShortNames, bills[0]));
+    liarStatus.push(buildLiarStatusColumn(liarIds, bills));
     statuses.push([buildBillStatus(bills)]);
     committees.push([buildBillCommitteeName(bills)]);
     latestLabels.push([buildLatestLabels(bills)]);
@@ -29,11 +29,11 @@ function updateSheet(body) {
   setColumnContent(range, latestLabels);
   setColumnContent(getBillStatusRange(range), statuses);
   setColumnContent(getBillCommitteeRange(range), committees);
-  setColumnContent(getBillSponsorRange(range), spsonsorships);
+  setColumnContent(getBillLiarStatusRange(range), liarStatus);
 }
 
 function getDistrictRange(body) {
-  return `${body}!A${billSponsorRowStart}:A`;
+  return `${body}!A${billLiarStatusRowStart}:A`;
 }
 
 function getBillLabelRange(body) {
@@ -48,8 +48,8 @@ function getBillCommitteeRange(billLabelRange) {
   return billLabelRange.replaceAll(billLabelRow, billCommitteeRow)
 }
 
-function getBillSponsorRange(billLabelRange) {
-  return billLabelRange.replace(billLabelRow, billSponsorRowStart).replace(billLabelRow, "")
+function getBillLiarStatusRange(billLabelRange) {
+  return billLabelRange.replace(billLabelRow, billLiarStatusRowStart).replace(billLabelRow, "")
 }
 
 function getBills(billLabels) {
@@ -67,7 +67,7 @@ function getBills(billLabels) {
   return bills;
 }
 
-function getDistrictToLiarShortName(body) {
+function getDistrictToLiar(body) {
   const url = `https://legislation.nysenate.gov/api/3/members/2022/${body}?key=${nyGovApiKey}&limit=1000`;
   const items = JSON.parse(UrlFetchApp.fetch(url).getContentText()).result.items;
   const districtToName = {};
@@ -87,12 +87,21 @@ function getLatestAmendment(bill) {
   return bill.amendments.items[bill.activeVersion];
 }
 
+function getVotes(bill) {
+  for (vote of bill.votes.items) {
+    if (vote.billId.printNo !== bill.printNo) continue;
+    if (vote.voteType !== "FLOOR") continue;
+    return vote.memberVotes.items;
+  }
+  return {};
+}
+
 function getCoSponsors(amendment) {
-  return amendment.coSponsors.items.map(item => item.shortName);
+  return amendment.coSponsors.items.map(item => item.memberId);
 }
 
 function getSponsor(bill) {
-  return bill.sponsor.member.shortName;
+  return bill.sponsor.member.memberId;
 }
 
 function getColumnContent(col) {
@@ -108,15 +117,30 @@ function getBillLabels(billLabelRow) {
   };
 }
 
-function buildSponsorshipColumn(liars, bill) {
-  const amendment = getLatestAmendment(bill);
-  const sponsor = getSponsor(bill);
+function buildLiarStatusColumn(liars, bills) {
+  const mainBill = bills[0];
+  const finalBill = bills[bills.length - 1];
+  const amendment = getLatestAmendment(mainBill);
+  const sponsor = getSponsor(mainBill);
   const coSponsors = getCoSponsors(amendment);
-  return liars.map(liar => {
-    if (liar === sponsor) return "SPONSOR";
-    if (coSponsors.includes(liar)) return "COSPONSOR";
-    return "";
-  });
+  const votes = getVotes(finalBill);
+  const liarStatuses = [];
+  for (liar of liars) {
+    var liarStatus = "";
+    if (liar === sponsor) liarStatus += "SPONSOR";
+    if (coSponsors.includes(liar)) liarStatus += "COSPONSOR";
+    for (const voteType in votes) {
+      const voters = votes[voteType].items;
+      for (voter of voters) {
+        if (voter.memberId === liar) {
+          if (liarStatus !== "") liarStatus += "/";
+          liarStatus += voteType;
+        }
+      }
+    }
+    liarStatuses.push(liarStatus);
+  }
+  return liarStatuses;
 }
 
 function buildBillStatus(bills) {
