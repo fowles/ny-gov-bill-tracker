@@ -59,7 +59,7 @@ function getBills(billLabels) {
     const url = `https://legislation.nysenate.gov/api/3/bills/2021/${billLabel}?key=${nyGovApiKey}&limit=1000`;
     const response = UrlFetchApp.fetch(url).getContentText();
     const bill = JSON.parse(response).result;
-    if (bill.substitutedBy && labels.indexOf(bill.substitutedBy.basePrintNo) == -1) {
+    if (bill.substitutedBy && !labels.includes(bill.substitutedBy.basePrintNo)) {
       labels.push(bill.substitutedBy.basePrintNo);
     }
     bills.push(bill);
@@ -154,7 +154,7 @@ function buildBillStatus(bills) {
     }
   }
   const lastStatus = bills[bills.length - 1].status.statusDesc;
-  if (statuses.indexOf(lastStatus) == -1) {
+  if (!statuses.includes(lastStatus)) {
     statuses.push(lastStatus);
   }
   return statuses.join("\n");
