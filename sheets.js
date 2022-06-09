@@ -165,7 +165,13 @@ function buildBillCommitteeName(bills) {
 }
 
 function buildLatestLabels(bills) {
-  return bills.map(bill => bill.printNo).join("\n");
+  const labels = [];
+  for (bill of bills) {
+    if (!labels.includes(bill.printNo)) {
+      labels.push(bill.printNo);
+    }
+  }
+  return labels.join("\n");
 }
 
 function setColumnContent(col, vals) {
