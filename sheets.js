@@ -5,7 +5,7 @@ const billStatusRow = 3
 const billCommitteeRow = 4
 const billLiarStatusRowStart = 6
 
-const year = "2022"
+const year = "2023"
 
 function updateAllLiarNames() {
   updateLiarNames("Senate");
