@@ -5,6 +5,24 @@ const billStatusRow = 3
 const billCommitteeRow = 4
 const billLiarStatusRowStart = 6
 
+const year = "2022"
+
+function updateAllLiarNames() {
+  updateLiarNames("Senate");
+  updateLiarNames("Assembly");
+}
+
+function updateLiarNames(body) {
+  const liarDistricts = getColumnContent(getDistrictRange(body));
+  const districtToLiar = getDistrictToLiar(body.toLowerCase(), true);
+  const liarNames = [liarDistricts.map(district => {
+    if (!(district in districtToLiar)) throw `District ${district} has no liar!`;
+    return districtToLiar[district].fullName;
+  })];
+
+  setColumnContent(getLiarNameRange(body), liarNames);
+}
+
 function updateAllSheets() {
   updateSheet("Senate");
   updateSheet("Assembly");
@@ -36,6 +54,10 @@ function getDistrictRange(body) {
   return `${body}!A${billLiarStatusRowStart}:A`;
 }
 
+function getLiarNameRange(body) {
+  return `${body}!B${billLiarStatusRowStart}:B`;
+}
+
 function getBillLabelRange(body) {
   return `${body}!C${billLabelRow}:${billLabelRow}`;
 }
@@ -56,7 +78,7 @@ function getBills(billLabels) {
   const bills = [];
   const labels = billLabels.split("\n")
   for (billLabel of labels) {
-    const url = `https://legislation.nysenate.gov/api/3/bills/2021/${billLabel}?key=${nyGovApiKey}&limit=1000`;
+    const url = `https://legislation.nysenate.gov/api/3/bills/${year}/${billLabel}?key=${nyGovApiKey}&limit=1000`;
     const response = UrlFetchApp.fetch(url).getContentText();
     const bill = JSON.parse(response).result;
     if (bill.substitutedBy && !labels.includes(bill.substitutedBy.basePrintNo)) {
@@ -67,8 +89,8 @@ function getBills(billLabels) {
   return bills;
 }
 
-function getDistrictToLiar(body) {
-  const url = `https://legislation.nysenate.gov/api/3/members/2022/${body}?key=${nyGovApiKey}&limit=1000`;
+function getDistrictToLiar(body, full = false) {
+  const url = `https://legislation.nysenate.gov/api/3/members/${year}/${body}?key=${nyGovApiKey}&limit=1000&full=${full}`;
   const items = JSON.parse(UrlFetchApp.fetch(url).getContentText()).result.items;
   const districtToName = {};
   for (item of items) {
