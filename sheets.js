@@ -24,7 +24,7 @@ function updateLiarNames(body) {
     "Assembly" : "nyassembly.gov/mem",
   };
   const urlForLiar = function (liar) {
-    const liarUrlPart = liar.toLowerCase().replace(/[^- \p{L}]/gu, '').replace(/\s+/g, '-');
+    const liarUrlPart = liar.replace(/[^- \p{L}]/gu, '').replace(/\s+/g, '-');
     return `https://${urlBase[body]}/${liarUrlPart}/contact`;
   };
 
