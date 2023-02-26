@@ -15,12 +15,29 @@ function updateAllLiarNames() {
 function updateLiarNames(body) {
   const liarDistricts = getColumnContent(getDistrictRange(body));
   const districtToLiar = getDistrictToLiar(body.toLowerCase(), true);
-  const liarNames = [liarDistricts.map(district => {
+  const liarForDistrict = function (district) {
     if (!(district in districtToLiar)) throw `District ${district} has no liar!`;
     return districtToLiar[district].fullName;
-  })];
+  };
+  const urlBase = {
+    "Senate": "www.nysenate.gov/senators",
+    "Assembly" : "nyassembly.gov/mem",
+  };
+  const urlForLiar = function (liar) {
+    const liarUrlPart = liar.toLowerCase().replace(/[^a-z ]/g, '').replace(/\s+/g, '-');
+    return `https://${urlBase[body]}/${liarUrlPart}/contact`;
+  };
 
-  setColumnContent(getLiarNameRange(body), liarNames);
+  const range = SpreadsheetApp.getActive().getRange(getLiarNameRange(body));
+  const values = range.getRichTextValues();
+  for (let i = 0; i < liarDistricts.length; ++i) {
+    const liar = liarForDistrict(liarDistricts[i]);
+    values[i][0] = SpreadsheetApp.newRichTextValue()
+      .setText(liar)
+      .setLinkUrl(urlForLiar(liar))
+      .build();
+  }
+  range.setRichTextValues(values);
 }
 
 function updateAllSheets() {
@@ -195,6 +212,7 @@ function buildLatestLabels(bills) {
   }
   return labels.join("\n");
 }
+
 
 function setColumnContent(col, vals) {
   const updated = Sheets.Spreadsheets.Values.get(sheetId, col);
