@@ -5,7 +5,10 @@ const billStatusRow = 3
 const billCommitteeRow = 4
 const billLiarStatusRowStart = 6
 
-const year = "2023"
+const year = "2025"
+const sheetId = "<TODO: FILL ME IN>";
+const nyGovApiKey = "<TODO: FILL ME IN>";
+const options = { muteHttpExceptions: true }
 
 function updateAllLiarNames() {
   updateLiarNames("Senate");
@@ -96,7 +99,7 @@ function getBills(billLabels) {
   const labels = billLabels.split("\n")
   for (billLabel of labels) {
     const url = `https://legislation.nysenate.gov/api/3/bills/${year}/${billLabel}?key=${nyGovApiKey}&limit=1000`;
-    const response = UrlFetchApp.fetch(url).getContentText();
+    const response = UrlFetchApp.fetch(url, options).getContentText();
     const bill = JSON.parse(response).result;
     if (bill.substitutedBy && !labels.includes(bill.substitutedBy.basePrintNo)) {
       labels.push(bill.substitutedBy.basePrintNo);
@@ -108,7 +111,7 @@ function getBills(billLabels) {
 
 function getDistrictToLiar(body, full = false) {
   const url = `https://legislation.nysenate.gov/api/3/members/${year}/${body}?key=${nyGovApiKey}&limit=1000&full=${full}`;
-  const items = JSON.parse(UrlFetchApp.fetch(url).getContentText()).result.items;
+  const items = JSON.parse(UrlFetchApp.fetch(url, options).getContentText()).result.items;
   const districtToName = {};
   for (item of items) {
     // There may be multiple liars with the same district code in the event that a liar was elected in a
